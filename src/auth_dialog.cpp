@@ -8,9 +8,9 @@
 #include "registration.h"
 #include "state.h"
 
-bool g_authDialogActive = false;
 struct mg_connection *g_pendingConn = nullptr;
 std::string g_pendingOrigin;
+std::string g_dialogOrigin;
 
 std::set<std::string> g_allowedOrigins;
 std::string g_allowedOriginsPath;
@@ -59,7 +59,7 @@ void ShowAuthDialog(const std::string &origin) {
   WriteString8(pkt, "No");
 
   InjectServerPacket(pkt);
-  g_authDialogActive = true;
+  g_dialogOrigin = origin;
 }
 
 void CloseAuthDialog() {
@@ -105,13 +105,14 @@ void SaveAllowedOrigins() {
 }
 
 void ResetAuthState() {
-  g_authDialogActive = false;
   g_pendingConn = nullptr;
   g_pendingOrigin.clear();
+  g_dialogOrigin.clear();
 }
 
 void PromoteConnection(struct mg_connection *c) {
   g_clientConn = c;
+  g_clientOrigin = g_pendingOrigin;
   BYTE ready = MSG_READY;
   mg_ws_send(g_clientConn, (const char *)&ready, 1, WEBSOCKET_OP_BINARY);
   std::lock_guard<std::mutex> lock(charDataMutex);
@@ -125,7 +126,7 @@ bool ShouldSuppressClientPacket(const BYTE *data, DWORD size) {
     return false;
 
   // Intercept dialog response (opcode 0x3A) for our auth dialog
-  if (g_authDialogActive && data[0] == 0x3A && size >= 10) {
+  if (!g_dialogOrigin.empty() && data[0] == 0x3A && size >= 10) {
     uint16_t pursuitId = ReadBE16(data + 6);
     if (pursuitId != AUTH_PURSUIT_ID)
       return false;
@@ -148,10 +149,13 @@ bool ShouldSuppressClientPacket(const BYTE *data, DWORD size) {
       InjectServerPacket(toReplay);
     }
 
-    if (accepted && g_pendingConn) {
-      g_allowedOrigins.insert(g_pendingOrigin);
+    if (accepted) {
+      g_allowedOrigins.insert(g_dialogOrigin);
       SaveAllowedOrigins();
-      PromoteConnection(g_pendingConn);
+      if (g_pendingConn) {
+        g_pendingOrigin = g_dialogOrigin;
+        PromoteConnection(g_pendingConn);
+      }
     } else if (g_pendingConn) {
       g_pendingConn->is_closing = 1;
     }
