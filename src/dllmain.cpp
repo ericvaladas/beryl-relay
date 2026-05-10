@@ -85,6 +85,14 @@ void AttachHooks() {
       reinterpret_cast<PVOID *>(&OrigGameRecv),
       reinterpret_cast<PVOID>(HookedGameRecv)
   );
+  DetourAttach(
+      reinterpret_cast<PVOID *>(&RealPeekMessageA),
+      reinterpret_cast<PVOID>(HookedPeekMessageA)
+  );
+  DetourAttach(
+      reinterpret_cast<PVOID *>(&RealPeekMessageW),
+      reinterpret_cast<PVOID>(HookedPeekMessageW)
+  );
   DetourTransactionCommit();
 }
 
@@ -102,6 +110,14 @@ void DetachHooks() {
   DetourDetach(
       reinterpret_cast<PVOID *>(&OrigGameRecv),
       reinterpret_cast<PVOID>(HookedGameRecv)
+  );
+  DetourDetach(
+      reinterpret_cast<PVOID *>(&RealPeekMessageA),
+      reinterpret_cast<PVOID>(HookedPeekMessageA)
+  );
+  DetourDetach(
+      reinterpret_cast<PVOID *>(&RealPeekMessageW),
+      reinterpret_cast<PVOID>(HookedPeekMessageW)
   );
   DetourTransactionCommit();
 }

@@ -253,10 +253,7 @@ void ClientHandler(struct mg_connection *c, int ev, void *ev_data) {
       }
     } else if (msgType == MSG_WALK) {
       if (bodyLen >= 1) {
-        void *thisPtr = *(void **)OBJECT_BASE_ADDR;
-        if (thisPtr) {
-          GameWalk(thisPtr, (int)body[0]);
-        }
+        EnqueueWalk((int)body[0]);
       }
     } else if (msgType == MSG_READ_MEMORY) {
       HandleMemoryRead(c, body, bodyLen);

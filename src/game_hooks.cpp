@@ -1,5 +1,8 @@
 #include "game_hooks.h"
 
+#include <deque>
+#include <mutex>
+
 #include "auth_dialog.h"
 #include "packet_io.h"
 #include "packet_parse.h"
@@ -68,4 +71,50 @@ HANDLE WINAPI HookedCreateMutexA(
     return h;
   }
   return RealCreateMutexA(lpAttr, bInitialOwner, lpName);
+}
+
+namespace {
+std::mutex g_walkQueueMutex;
+std::deque<int> g_walkQueue;
+// Caps backlog from a misbehaving client so DrainPendingWalks can't stall the
+// game thread; the JS side already paces walks, so 16 is plenty of headroom.
+constexpr size_t WALK_QUEUE_MAX = 16;
+} // namespace
+
+void EnqueueWalk(int direction) {
+  std::lock_guard<std::mutex> lock(g_walkQueueMutex);
+  if (g_walkQueue.size() >= WALK_QUEUE_MAX)
+    return;
+  g_walkQueue.push_back(direction);
+}
+
+void DrainPendingWalks() {
+  while (true) {
+    int direction;
+    {
+      std::lock_guard<std::mutex> lock(g_walkQueueMutex);
+      if (g_walkQueue.empty())
+        return;
+      direction = g_walkQueue.front();
+      g_walkQueue.pop_front();
+    }
+    void *thisPtr = *(void **)OBJECT_BASE_ADDR;
+    if (thisPtr)
+      GameWalk(thisPtr, direction);
+  }
+}
+
+PeekMessageFn RealPeekMessageA = PeekMessageA;
+PeekMessageFn RealPeekMessageW = PeekMessageW;
+
+BOOL WINAPI
+HookedPeekMessageA(LPMSG lpMsg, HWND hWnd, UINT min, UINT max, UINT remove) {
+  DrainPendingWalks();
+  return RealPeekMessageA(lpMsg, hWnd, min, max, remove);
+}
+
+BOOL WINAPI
+HookedPeekMessageW(LPMSG lpMsg, HWND hWnd, UINT min, UINT max, UINT remove) {
+  DrainPendingWalks();
+  return RealPeekMessageW(lpMsg, hWnd, min, max, remove);
 }

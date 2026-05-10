@@ -38,3 +38,17 @@ extern CreateMutexAFn RealCreateMutexA;
 HANDLE WINAPI HookedCreateMutexA(
     LPSECURITY_ATTRIBUTES lpAttr, BOOL bInitialOwner, LPCSTR lpName
 );
+
+// Cross-thread walk dispatch. The mongoose thread calls EnqueueWalk; the
+// PeekMessage hook (game thread) calls DrainPendingWalks so GameWalk only ever
+// runs on the thread that owns the game state.
+void EnqueueWalk(int direction);
+void DrainPendingWalks();
+
+typedef BOOL(WINAPI *PeekMessageFn)(LPMSG, HWND, UINT, UINT, UINT);
+extern PeekMessageFn RealPeekMessageA;
+extern PeekMessageFn RealPeekMessageW;
+BOOL WINAPI
+HookedPeekMessageA(LPMSG lpMsg, HWND hWnd, UINT min, UINT max, UINT remove);
+BOOL WINAPI
+HookedPeekMessageW(LPMSG lpMsg, HWND hWnd, UINT min, UINT max, UINT remove);
