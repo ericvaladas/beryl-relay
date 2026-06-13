@@ -68,6 +68,23 @@ void PatchShowUserDirection(uint32_t entityId, BYTE direction) {
     sit->second[5] = (char)direction;
   }
 }
+
+// Caller holds charDataMutex. Clears all per-character accumulated state. The
+// stored maps are slot-keyed with no character dimension, so without this a
+// different character loading on the same client process inherits the previous
+// character's stale skills/spells/items at slots it doesn't itself use.
+void ResetStoredCharData() {
+  storedPackets.clear();
+  storedStats.clear();
+  storedSpells.clear();
+  storedItems.clear();
+  storedSkills.clear();
+  storedEquipment.clear();
+  storedEntities.clear();
+  storedShowUsers.clear();
+  g_currentDialog.clear();
+  g_suspendedDialog.clear();
+}
 } // namespace
 
 void ParseServerPacket(const BYTE *data, DWORD size) {
@@ -102,7 +119,10 @@ void ParseServerPacket(const BYTE *data, DWORD size) {
     pos += keyLength;
     std::string newName = ReadString8(data, size, pos);
     if (newName != charName) {
+      // A different character is loading on this client. Drop the previous
+      // character's accumulated state so it can't bleed into the new one.
       Deregister();
+      ResetStoredCharData();
     }
     charName = newName;
     break;
@@ -144,16 +164,7 @@ void ParseServerPacket(const BYTE *data, DWORD size) {
     Deregister();
     charName.clear();
     charId = 0;
-    storedPackets.clear();
-    storedStats.clear();
-    storedSpells.clear();
-    storedItems.clear();
-    storedSkills.clear();
-    storedEquipment.clear();
-    storedEntities.clear();
-    storedShowUsers.clear();
-    g_currentDialog.clear();
-    g_suspendedDialog.clear();
+    ResetStoredCharData();
     break;
   }
   case 0x15: // mapInfo — store and clear entities (new map)
