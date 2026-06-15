@@ -1,3 +1,3 @@
 #pragma once
 
-#define BERYL_AGENT_VERSION "1.1.1"
+#define BERYL_RELAY_VERSION "1.1.1"

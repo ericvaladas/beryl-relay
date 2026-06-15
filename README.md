@@ -1,4 +1,4 @@
-# beryl-agent
+# beryl-relay
 
 A DLL that injects into Dark Ages, hooks the game's `send` and `recv` functions with Microsoft Detours, and relays packets between the game and a connected client over a WebSocket.
 
@@ -35,7 +35,7 @@ make distclean  # also remove cloned dependencies
 
 ## Authorization
 
-When a new client tries to connect, the agent shows an in-game dialog asking whether to allow connections from that origin. Approved origins are saved to `%LOCALAPPDATA%\beryl\settings.json` and auto-approved on future connections.
+When a new client tries to connect, the relay shows an in-game dialog asking whether to allow connections from that origin. Approved origins are saved to `%LOCALAPPDATA%\beryl\settings.json` and auto-approved on future connections.
 
 ## Acknowledgements
 

@@ -25,7 +25,7 @@ void RegistryBroadcast(const std::string &message) {
 void RegistrySendClientList(struct mg_connection *c) {
   json msg = {
       {"type", "init"},
-      {"agentVersion", BERYL_AGENT_VERSION},
+      {"relayVersion", BERYL_RELAY_VERSION},
       {"clients", registeredClients}
   };
   std::string s = msg.dump();
